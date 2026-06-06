@@ -2,11 +2,18 @@
 
 [English](#english) | [中文](#中文)
 
+### 📊 Visualization & Results
+
+
+![Backtest performance](backtest/results/backtest_performance.png)
+
 ---
 ## 中文
 
 ### 🚀 项目简介
 `StockPickingSystem 2.0` 是一个面向 A 股市场的**工业级多因子选股与量化回测系统**。本项目经过严苛的工程级重构，建立了一套对“未来函数”完全免疫的数据清洗流，并内置了高精度截面/时序计算引擎。
+
+
 
 策略在切断所有未来污染源、剔除截面分身、执行防弹级面板复权及上市天数时序滚动/时光冻结过滤后，在 trend-following 模式下交出了**总收益率 178.45%，夏普比率 0.99，年化 Alpha 25.89%** 的真实闭环成绩单。
 
