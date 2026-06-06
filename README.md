@@ -5,7 +5,7 @@
 ### 📊 Visualization & Results
 
 
-![Backtest performance](backtest/results/backtest_performance.png)
+![Backtest performance](backtest_performance.png)
 
 ---
 ## 中文
