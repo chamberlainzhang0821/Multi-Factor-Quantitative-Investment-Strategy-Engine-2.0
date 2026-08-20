@@ -7,7 +7,55 @@
 
 ![Backtest performance](backtest_performance.png)
 
----
+## English
+
+### 🚀 Project Overview
+StockPickingSystem 2.0 is an industrial-grade multi-factor stock picking and quantitative backtesting system tailored for the China A-share market. Following rigorous, production-level refactoring, the system implements a data-cleaning pipeline completely immune to look-ahead bias (future functions) and incorporates high-precision cross-sectional/time-series computation engines.
+After eliminating all potential data leaks, cross-sectional duplicate anomalies, and implementing bulletproof panel-level split adjustments alongside an anchored "Time-Freeze" history filter, the strategy delivers a robust, look-ahead-free performance in trend-following mode: Total Return: 178.45%, Sharpe Ratio: 0.99, and Annualized Alpha: 25.89%.
+### 🛡️ Production-Grade Features
+* Panel-Level Split Adjustment: Eliminates price gaps and artificial cliffs (e.g., -90% flash crashes) common in cross-sectional merges via forward-filled global adjustment factors.
+* Anchored Time-Freeze History Filtering: Abandons global size-based look-ahead tracking. It anchors history at a fixed date (e.g., 2025-05-26) and employs a rolling cumulative count (cumcount) thereafter. This locks past stock pools and guarantees that newly appended future data never retroactively alters historical backtest universes.
+* Unified Time-Series Imputation: Executes comprehensive data imputation (handle_missing) right after multi-source alignment (align_panel), securing gaps from stock suspensions and industry index breaks.
+* Self-Healing Factor Pipeline Audit: Integrates dynamic "infrared sensors" into the factor_pipeline. It catches row-splitting issues (such as the Sector factor multiplying rows due to historical sector changes) in real-time, executing automated deduplication.
+### 📂 Repository Structure
+```Plaintext
+├── config/                  # Pathing and global configurations
+├── data/                    # Data Center (Parquet/CSV)
+│   ├── raw/                 # Raw daily bars, adjustment factors, SW industries, index data
+│   ├── clean/               # Gold-standard clean, adjusted, and aligned panel data
+│   └── factors/             # Computed factors, Alpha scores, and daily buy lists
+├── data_engine/             # Data cleaning and alignment engine
+│   └── clean/               # Core steps (clean_prices, forward_adj, missing_handler, etc.)
+├── factor_engine/           # Sub-factor workspaces (Momentum, Sector, ATR, Squeeze, etc.)
+└── backtest/                # T+1 compounding rolling backtest engine
+```
+### ⚡ Quick Start
+1. Data Cleaning & Base Panel Alignment
+Run daily denoising, global split-adjustments, external data merging, time-series imputation, and anchored history filtering:
+```bash
+python data_engine/clean/run_clean_pipeline.py
+```
+3. Factor Pipeline & Self-Healing Audit
+Compute the 9 core recipe factors while auditing and neutralizing any leaking/inflating sub-factors (e.g., Sector):
+
+```bash
+
+python factor_engine/run_factor_pipeline.py
+```
+3. Cross-Sectional Z-Score Combination
+Perform cross-sectional normalization, blend multi-factor scores into alpha_score, and export today's actionable top picks:
+```bash
+python factor_engine/run_alpha_combiner.py
+```
+### 📊 Key Backtest Metrics (Trend Following Mode)
+Total Return: 178.45%
+Sharpe Ratio: 0.99
+Max Drawdown: -22.70%
+Win Rate: 48.05%
+PnL Ratio: 2.39
+Annual Alpha: 25.89%
+
+
 ## 中文
 
 ### 🚀 项目简介
@@ -75,50 +123,3 @@ python factor_engine/run_alpha_combiner.py
 盈亏比 (PnL Ratio): 2.39
 年化超额 (Annual Alpha): 25.89%
 
-## English
-
-### 🚀 Project Overview
-StockPickingSystem 2.0 is an industrial-grade multi-factor stock picking and quantitative backtesting system tailored for the China A-share market. Following rigorous, production-level refactoring, the system implements a data-cleaning pipeline completely immune to look-ahead bias (future functions) and incorporates high-precision cross-sectional/time-series computation engines.
-After eliminating all potential data leaks, cross-sectional duplicate anomalies, and implementing bulletproof panel-level split adjustments alongside an anchored "Time-Freeze" history filter, the strategy delivers a robust, look-ahead-free performance in trend-following mode: Total Return: 178.45%, Sharpe Ratio: 0.99, and Annualized Alpha: 25.89%.
-### 🛡️ Production-Grade Features
-* Panel-Level Split Adjustment: Eliminates price gaps and artificial cliffs (e.g., -90% flash crashes) common in cross-sectional merges via forward-filled global adjustment factors.
-* Anchored Time-Freeze History Filtering: Abandons global size-based look-ahead tracking. It anchors history at a fixed date (e.g., 2025-05-26) and employs a rolling cumulative count (cumcount) thereafter. This locks past stock pools and guarantees that newly appended future data never retroactively alters historical backtest universes.
-* Unified Time-Series Imputation: Executes comprehensive data imputation (handle_missing) right after multi-source alignment (align_panel), securing gaps from stock suspensions and industry index breaks.
-* Self-Healing Factor Pipeline Audit: Integrates dynamic "infrared sensors" into the factor_pipeline. It catches row-splitting issues (such as the Sector factor multiplying rows due to historical sector changes) in real-time, executing automated deduplication.
-### 📂 Repository Structure
-```Plaintext
-├── config/                  # Pathing and global configurations
-├── data/                    # Data Center (Parquet/CSV)
-│   ├── raw/                 # Raw daily bars, adjustment factors, SW industries, index data
-│   ├── clean/               # Gold-standard clean, adjusted, and aligned panel data
-│   └── factors/             # Computed factors, Alpha scores, and daily buy lists
-├── data_engine/             # Data cleaning and alignment engine
-│   └── clean/               # Core steps (clean_prices, forward_adj, missing_handler, etc.)
-├── factor_engine/           # Sub-factor workspaces (Momentum, Sector, ATR, Squeeze, etc.)
-└── backtest/                # T+1 compounding rolling backtest engine
-```
-### ⚡ Quick Start
-1. Data Cleaning & Base Panel Alignment
-Run daily denoising, global split-adjustments, external data merging, time-series imputation, and anchored history filtering:
-```bash
-python data_engine/clean/run_clean_pipeline.py
-```
-3. Factor Pipeline & Self-Healing Audit
-Compute the 9 core recipe factors while auditing and neutralizing any leaking/inflating sub-factors (e.g., Sector):
-
-```bash
-
-python factor_engine/run_factor_pipeline.py
-```
-3. Cross-Sectional Z-Score Combination
-Perform cross-sectional normalization, blend multi-factor scores into alpha_score, and export today's actionable top picks:
-```bash
-python factor_engine/run_alpha_combiner.py
-```
-### 📊 Key Backtest Metrics (Trend Following Mode)
-Total Return: 178.45%
-Sharpe Ratio: 0.99
-Max Drawdown: -22.70%
-Win Rate: 48.05%
-PnL Ratio: 2.39
-Annual Alpha: 25.89%
