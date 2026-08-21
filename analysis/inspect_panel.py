@@ -84,20 +84,20 @@ print("\n" + "="*50)
 print("--- Split-Adjustment (复权) Verification ---")
 print("="*50)
 
-# 确保数据排序正确
+# Ensure the data is sorted correctly.
 df = df.sort_values(['ts_code', 'trade_date'])
 
-# 1. 计算理论每日收益率 (Close / 前一日Close - 1)
+# 1. Calculate theoretical daily returns (Close / prior-day Close - 1).
 df['daily_ret'] = df.groupby('ts_code')['close'].pct_change()
 
-# 2. 检查是否有超出A股跌幅限制的“断崖式假跌”
-# 设定 -25% 为阈值 (即使是科创板20%跌停，也不会超过 -25%)
-# 如果有大量 -30% ~ -50% 的记录，说明复权失败！
+# 2. Check for artificial cliff-like declines beyond A-share limits.
+# Use -25% as the threshold; even a 20% STAR Market limit-down should not exceed it.
+# Many -30% to -50% records indicate failed adjustment.
 extreme_drops = df[df['daily_ret'] < -0.25]
 
 print(f"\nNumber of extreme daily drops (< -25%): {len(extreme_drops)}")
 
-if len(extreme_drops) > 50: # 允许少量异常值(如退市整理期)
+if len(extreme_drops) > 50: # Allow a small number of outliers, such as delisting consolidation periods
     print("❌ WARNING: Too many extreme price drops! Data might NOT be fully adjusted.")
     print("Sample of extreme drops (Check if these are ex-dividend dates):")
     print(extreme_drops[['ts_code', 'trade_date', 'close', 'daily_ret']].head(10))
@@ -105,8 +105,8 @@ else:
     print("✅ SUCCESS: No massive price gaps found. Data appears properly adjusted.")
 
 
-# 3. 检查历史价格的“前复权缩放效应”
-# 前复权会把很久以前的真实价格按比例缩小。我们抽查几个老牌分红大户的历史最低价
+# 3. Check the historical scaling effect of forward adjustment.
+# Forward adjustment scales older actual prices down; spot-check historical lows of long-standing dividend payers.
 print("\n--- Check Historic Prices of Classic Stocks ---")
 
 test_stocks = {
@@ -125,7 +125,7 @@ for code, name in test_stocks.items():
         print("  (💡 If the oldest close is significantly lower than the actual historical unadjusted price, forward-adjustment worked!)")
 
 
-# 4. OHLC 一致性检查 (复权后最高价依然不能低于最低价)
+# 4. Check OHLC consistency: adjusted highs must not be below adjusted lows.
 print("\n--- Adjusted OHLC Consistency ---")
 invalid_ohlc = df[
     (df['high'] < df['low']) | 
@@ -136,5 +136,5 @@ print(f"Invalid OHLC rows after adjustment: {len(invalid_ohlc)}")
 if len(invalid_ohlc) > 0:
     print(invalid_ohlc[['ts_code', 'trade_date', 'open', 'high', 'low', 'close']].head())
 
-# 5. 清理用于测试的列
+# 5. Remove columns used for testing.
 df = df.drop(columns=['daily_ret'])

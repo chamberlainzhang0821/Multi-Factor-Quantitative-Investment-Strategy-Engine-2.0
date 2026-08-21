@@ -22,23 +22,23 @@ def run_backtest():
     print("=" * 50)
     
     # ---------------------------------------------------------
-    # 1. Configuration Parameters (💡 核心中央控制台)
+    # 1. Configuration parameters (central control section)
     # ---------------------------------------------------------
-    # --- 资金与交易参数 ---
+    # Capital and trading parameters
     INITIAL_CAPITAL = 100000
-    HOLD_DAYS = 9999          # 既然你要“跟随趋势”，我们将 HOLD_DAYS 设为一个极大值
+    HOLD_DAYS = 9999          # Use a very large value to follow the trend
     TOP_N = 5                 # Max stocks to buy per day
     SCORE_THRESHOLD = 10.0     # Minimum alpha_score to trigger a buy
-    SLIPPAGE = 0.00           # 滑点设置
+    SLIPPAGE = 0.00           # Slippage setting
     
-    # --- 风控系统参数 (Risk Engine 专属) ---
-    DAILY_STOP_LOSS_PCT = 0.06        # 🚀 新增：单日暴跌止损阈值 (6%)
-    MAX_PORTFOLIO_DD = 0.15           # 账户整体最大回撤阈值 (15% 触发熔断)
-    FREEZE_DAYS = 7                   # 熔断冷却天数
-    ENABLE_TIME_EXIT = False          # 开关1：到期平仓 (关掉，专注趋势)
-    ENABLE_STOP_LOSS = True           # 开关2：单票单日暴跌止损
-    ENABLE_PORTFOLIO_FREEZE = False    # 开关3：大盘回撤账户熔断
-    ENABLE_DELIST_LIQUIDATION = True  # 开关4：退市/停牌强平
+    # Risk-engine parameters
+    DAILY_STOP_LOSS_PCT = 0.06        # Single-day plunge stop threshold (6%)
+    MAX_PORTFOLIO_DD = 0.15           # Portfolio drawdown threshold that triggers a freeze (15%)
+    FREEZE_DAYS = 7                   # Freeze cooldown days
+    ENABLE_TIME_EXIT = False          # Switch 1: exit at expiry (disabled for trend following)
+    ENABLE_STOP_LOSS = True           # Switch 2: single-stock daily plunge stop
+    ENABLE_PORTFOLIO_FREEZE = False    # Switch 3: portfolio drawdown freeze
+    ENABLE_DELIST_LIQUIDATION = True  # Switch 4: forced delisting/suspension liquidation
     # ---------------------------------------------------------
     
     factor_file = FACTOR_DATA_DIR / "factor_scores.parquet"
@@ -53,7 +53,7 @@ def run_backtest():
     signal_engine = SignalEngine(top_n=TOP_N, score_threshold=SCORE_THRESHOLD)
     portfolio_engine = PortfolioEngine(initial_capital=INITIAL_CAPITAL, slippage=SLIPPAGE)
     
-    # 🚀 实例化时替换为新的参数
+    # Initialize with the new parameters.
     risk_engine = RiskEngine(
         daily_stop_loss_pct=DAILY_STOP_LOSS_PCT, 
         max_portfolio_dd=MAX_PORTFOLIO_DD, 
@@ -72,24 +72,24 @@ def run_backtest():
     # 3. The Daily Trading Loop
     # ---------------------------------------------------------
     
-    buy_signals = [] # 用于 T+1 逻辑
+    buy_signals = [] # Used for T+1 execution logic
     
     for current_date in dates:
-        # A. 状态检查
+        # A. Check state.
         is_frozen = risk_engine.is_trading_frozen(current_date)
         current_total_capital = portfolio_engine.equity_curve[-1]['capital'] if portfolio_engine.equity_curve else INITIAL_CAPITAL
         
-        # B. 仓位扫描与处理
+        # B. Scan and process positions.
         current_positions = portfolio_engine.positions.copy()
         
-        # 💡 优化：删除了 df_today 的获取，因为不需要 ATR 了，回测速度会显著提升
+        # Optimization: df_today is no longer fetched because ATR is not needed.
         
         for pos in current_positions:
             code = pos['code']
             current_price = data_engine.get_price(current_date, code)
 
-            # --- 💡 全部风控裁决交给 RiskEngine ---
-            # 移除了 atr_val 传参
+            # Delegate all risk decisions to RiskEngine.
+            # The atr_val argument has been removed.
             exit_flag, reason, execute_price = risk_engine.check_stock_exit(
                 current_price=current_price,
                 position=pos,
@@ -97,7 +97,7 @@ def run_backtest():
                 hold_days=HOLD_DAYS
             )
             
-            # 只要风控引擎说要卖，就按它给的 execute_price 坚决执行
+            # Execute the sale at the price returned by the risk engine.
             if exit_flag:
                 if reason == "forced_delist_liquidation":
                     print(f"💀 CRITICAL: {code} missing {risk_engine.delist_missing_days} days. Forced liquidation on {current_date.strftime('%Y-%m-%d')}")
@@ -105,10 +105,10 @@ def run_backtest():
                 portfolio_engine.execute_sell(pos, execute_price, current_date, reason)
                 portfolio_engine.positions.remove(pos)
 
-        # C. 【常规买入逻辑】(受熔断限制：is_frozen 时不进场)
+        # C. Standard purchase logic (do not enter while frozen).
         if not is_frozen and buy_signals:
             active_codes = [p['code'] for p in portfolio_engine.positions]
-            target_value = current_total_capital * 0.20 # 复利：当前总资产的 20%
+            target_value = current_total_capital * 0.20 # Compound at 20% of current total assets
             
             for code in buy_signals:
                 if code in active_codes:
@@ -128,23 +128,23 @@ def run_backtest():
                     active_codes.append(code)
 
         # ---------------------------------------------------------
-        # D. 每日必跑：收尾与信号生成
+        # D. Daily finalization and signal generation.
         # ---------------------------------------------------------
-        # 1. 产生今日信号给明天用 (T+1)
+        # 1. Generate today's signals for tomorrow (T+1).
         buy_signals = signal_engine.generate_daily_buy_list(current_date, data_engine.factors)
 
-        # 2. 算账：记录今天的净值
+        # 2. Record today's net value.
         total_capital = portfolio_engine.update_daily_equity(current_date, data_engine)
         
-        # 3. 检查今天是否触发新的熔断 (供明天参考)
-        # 💡 修改：移除了外部传入的 peak_capital，引擎内部会自动管理
+        # 3. Check whether today triggers a new freeze for tomorrow.
+        # peak_capital is now managed internally by the engine.
         risk_engine.check_portfolio_risk(
             current_capital=total_capital, 
             current_date=current_date
         )
 
     # ---------------------------------------------------------
-    # 🚀 补丁：回测结束“虚拟平仓”，修复 Win Rate 统计
+    # Settle open positions at the end of the backtest to correct win-rate statistics.
     # ---------------------------------------------------------
     final_date = dates[-1]
     for pos in portfolio_engine.positions.copy():

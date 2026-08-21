@@ -6,7 +6,7 @@ from scipy.stats import spearmanr
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 
-# 🚀 改变路径：读取最原始的全量因子文件
+# Read the original full factor file.
 FACTOR_FILE = (
     BASE_DIR /
     "data" /
@@ -64,13 +64,13 @@ def ic_analysis():
     )
 
     # ---------------------------------------------------------
-    # 🚨 步骤 1: 必须先严格按代码和时间排序，防止 shift 错乱
+    # Step 1: strictly sort by code and date to prevent shift misalignment.
     # ---------------------------------------------------------
     print("Sorting data by ts_code and trade_date...")
     df = df.sort_values(["ts_code", "trade_date"]).reset_index(drop=True)
 
     # ---------------------------------------------------------
-    # 🚨 步骤 2: 在过滤之前，先计算完整的未来收益率
+    # Step 2: calculate complete forward returns before filtering.
     # ---------------------------------------------------------
     print("Calculating forward returns...")
     for h in [10,15,60,120]:
@@ -107,7 +107,7 @@ def ic_analysis():
         )
 
     # ---------------------------------------------------------
-    # 🚨 步骤 3: 截面 Z-score 处理 (保持在全集上计算，保证统计学意义)
+    # Step 3: calculate cross-sectional Z-scores on the full set for statistical validity.
     # ---------------------------------------------------------
     print("Calculating Z-scores...")
     factor_cols = [
@@ -128,7 +128,7 @@ def ic_analysis():
 
     for f in factor_cols:
         
-        # 增加容错：如果因子因为某种原因不存在，跳过
+        # Skip gracefully when a factor is unavailable.
         if f not in df.columns:
             continue
 
@@ -150,14 +150,14 @@ def ic_analysis():
         df["total_score"] += z
 
     # ---------------------------------------------------------
-    # 🚨 步骤 4: 安全过滤 (此时未来收益已经算好对齐，Z-score也已完成)
+    # Step 4: filter safely after forward returns and Z-scores are aligned.
     # ---------------------------------------------------------
     print("Filtering signals...")
     df=filter_signals(df)
 
 
     # -------------------
-    # rank IC (总分)
+    # Rank IC (composite score)
     # -------------------
     for h in [10,15,60,120]:
 

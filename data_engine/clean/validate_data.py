@@ -1,17 +1,17 @@
 import pandas as pd
 def validate(df):
 
-    # panel已经在align阶段排序，无需重复monotonic检查
-    # 这里只做真正有价值的数据完整性验证
+    # The panel is already sorted during alignment; no repeated monotonicity check is needed.
+    # Perform only meaningful data-integrity validation here.
 
     assert not df.duplicated(
         ['ts_code','trade_date']
     ).any()
 def filter_short_history(df, min_required_days=228):
     """
-    时光冻结版过滤函数
+    Time-freeze filtering function.
     
-    满足用户执念：2025-05-26 之前的历史逻辑完全不动，2025-05-26 之后的数据不逆向污染历史。
+    Preserve historical logic before 2025-05-26 without back-propagating later data.
     """
     if df is None or df.empty:
         return df
@@ -22,32 +22,32 @@ def filter_short_history(df, min_required_days=228):
 
     print(f"--- 正在执行时光冻结过滤 (锚定日期: {freeze_date.strftime('%Y-%m-%d')}) ---")
 
-    # 1. 剥离出 2025-05-26 之前的历史快照
+    # 1. Isolate the historical snapshot through 2025-05-26.
     snapshot_past = df[df['trade_date'] <= freeze_date]
     
-    # 用你原本的旧逻辑：看在当时的总天数是否大于等于 228
+    # Apply the original rule: retain codes with at least 228 days at that time.
     past_counts = snapshot_past.groupby('ts_code').size()
     keep_past_codes = past_counts[past_counts >= min_required_days].index
     
-    # 2. 2025-05-26 之前的历史数据，严格执行旧名单过滤（保住你的历史收益）
+    # 2. Strictly apply the legacy universe filter to historical data.
     df_past_filtered = snapshot_past[snapshot_past['ts_code'].isin(keep_past_codes)]
 
-    # 3. 2025-05-26 之后的新增数据
+    # 3. Process data added after 2025-05-26.
     df_future = df[df['trade_date'] > freeze_date]
     
     if not df_future.empty:
-        # 核心逻辑：未来数据不再去“逆向贡献”过去的天数，
-        # 而是顺着 2025-05-26 的历史遗产，采用滚动累计（cumcount）来判断新股是否成熟
-        # 同时允许当年已经通过考核的“老股”继续留在池子里
+        # Later data does not retroactively contribute to historical day counts.
+        # Use cumulative counts from the freeze date to determine when new stocks mature.
+        # Previously qualified stocks remain in the universe.
         df_all_sorted = df.sort_values(['ts_code', 'trade_date']).reset_index(drop=True)
         df_all_sorted['cum_days'] = df_all_sorted.groupby('ts_code').cumcount() + 1
         
-        # 提取出未来日子里，累计天数达标的行
+        # Extract future rows whose cumulative day count meets the threshold.
         df_future_sorted = df_all_sorted[df_all_sorted['trade_date'] > freeze_date]
         df_future_filtered = df_future_sorted[df_future_sorted['cum_days'] >= min_required_days].copy()
         df_future_filtered = df_future_filtered.drop(columns=['cum_days'])
         
-        # 合并新旧历史
+        # Combine historical and subsequent data.
         df_final = pd.concat([df_past_filtered, df_future_filtered], ignore_index=True)
     else:
         df_final = df_past_filtered

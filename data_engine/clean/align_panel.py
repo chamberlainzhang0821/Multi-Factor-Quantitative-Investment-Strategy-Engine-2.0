@@ -5,15 +5,15 @@ def align_panel(
     moneyflow,
     members,
     sector_prices,
-    index_prices  # 🚀 新增参数
+    index_prices  # Newly added parameter
 ):
 
     price = price.copy()
     moneyflow = moneyflow.copy()
     members = members.copy()
     sector_prices = sector_prices.copy()
-    index_prices = index_prices.copy()  # 🚀 新增：复制指数数据
-    # 如果抓取到了指数数据才处理
+    index_prices = index_prices.copy()  # Copy index data
+    # Process index data only when it was fetched.
     if not index_prices.empty:
         index_prices = index_prices.copy()
 
@@ -138,14 +138,14 @@ def align_panel(
     # 🚀 merge benchmark index (HS300)
     # -----------------
     if not index_prices.empty:
-        # 提取沪深300的收盘价
+        # Extract CSI 300 closing prices.
         hs300 = (
             index_prices[index_prices["ts_code"] == "000300.SH"]
             [["trade_date", "close"]]
             .rename(columns={"close": "hs300_close"})
         )
 
-        # 广播合并到所有个股面板 (每天一个固定的 hs300_close 值)
+        # Broadcast-merge the daily hs300_close value into every stock panel row.
         panel = panel.merge(
             hs300,
             on="trade_date",

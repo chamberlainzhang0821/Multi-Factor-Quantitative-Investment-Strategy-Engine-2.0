@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 
-# 🚀 统一路径：读取最原始的全量因子文件
+# Use a unified path to read the original full factor file.
 FACTOR_FILE = (
     BASE_DIR /
     "data" /
@@ -47,13 +47,13 @@ def monotonicity_check():
     df = pd.read_parquet(FACTOR_FILE)
 
     # ---------------------------------------------------------
-    # 🚨 步骤 1: 必须先严格按代码和时间排序，防止 shift 错乱
+    # Step 1: strictly sort by code and date to prevent shift misalignment.
     # ---------------------------------------------------------
     print("Sorting data by ts_code and trade_date...")
     df = df.sort_values(["ts_code", "trade_date"]).reset_index(drop=True)
 
     # ---------------------------------------------------------
-    # 🚨 步骤 2: 在过滤之前，先计算完整的未来收益率！
+    # Step 2: calculate complete forward returns before filtering.
     # ---------------------------------------------------------
     print("Calculating forward returns...")
     for horizon in [10, 15, 60, 120]:
@@ -64,7 +64,7 @@ def monotonicity_check():
         )
 
     # ---------------------------------------------------------
-    # 🚨 步骤 3: 计算截面 Z-score (保持在全集上计算)
+    # Step 3: calculate cross-sectional Z-scores on the full set.
     # ---------------------------------------------------------
     print("Calculating Z-scores...")
     factor_cols = [
@@ -92,12 +92,12 @@ def monotonicity_check():
         df["total_score"] += z
 
     # ---------------------------------------------------------
-    # 🚨 步骤 4: 安全过滤 (此时未来收益对齐，Z-score也已完成)
+    # Step 4: filter safely after forward returns and Z-scores are aligned.
     # ---------------------------------------------------------
     print("Filtering signals...")
     df = filter_signals(df)
 
-    # 清理用于计算的 NaN (未来收益缺失的行以及没有总分的行)
+    # Remove NaN rows used in calculation, including missing forward returns or composite scores.
     df = df.dropna(
        subset=[
          "future_ret_10",
@@ -109,7 +109,7 @@ def monotonicity_check():
     )
 
     # --------------------------
-    # daily quintiles (1-5 分组)
+    # Daily quintiles (groups 1-5)
     # --------------------------
     print("Assigning quintiles...")
     def make_deciles(x):
@@ -160,7 +160,7 @@ def monotonicity_check():
     # --------------------------
     q5 = df[df["decile"] == 5].copy()
 
-    # 按天计算 Top 10% 的阈值，这样比全局更准
+    # Calculate the Top 10% threshold daily for greater accuracy than a global threshold.
     threshold = q5.groupby("trade_date")["total_score"].transform(lambda x: x.quantile(0.90))
     q5["extreme"] = (q5["total_score"] >= threshold)
 
@@ -181,7 +181,7 @@ def monotonicity_check():
         daily_decile_ret = df.groupby(["trade_date", "decile"])[col].mean().reset_index()
         monotone = daily_decile_ret.groupby("decile")[col].mean()
 
-        # 调整颜色，最高分用绿色(或红色，视你的喜好)，最低分用灰色
+        # Set colors: green or red for the highest score and gray for the lowest.
         colors = ['#d3d3d3', '#a9a9a9', '#808080', '#69b3a2', '#40e0d0']
         
         ax.bar(monotone.index, monotone.values, color=colors[:len(monotone)])
@@ -192,7 +192,7 @@ def monotonicity_check():
 
     plt.tight_layout()
     
-    # 确保文件夹存在
+    # Ensure the directory exists.
     output_dir = BASE_DIR / "research" / "results"
     output_dir.mkdir(parents=True, exist_ok=True)
     

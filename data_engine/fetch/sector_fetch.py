@@ -27,7 +27,7 @@ def fetch_sector():
         l1.to_parquet(level1_file)
         l2.to_parquet(level2_file)
 
-    # 🔑 关键修复：确保 all_codes 在任何情况下都被定义
+    # Ensure all_codes is defined in every execution path
     all_codes = l1["index_code"].tolist() + l2["index_code"].tolist()
 
     # ------------------------
@@ -53,11 +53,11 @@ def fetch_sector():
             members.to_parquet(member_file)
 
     # ------------------------
-    # 3. Sector Index Prices (补全 730 天数据)
+    # 3. Sector index prices (complete 730 days of data)
     # ------------------------
     if price_file.exists():
-        # 这里建议：如果你确定之前的 price 文件不满 2 年，请务必手动删除它
-        # 或者把这里的逻辑改成强制覆盖
+        # Delete the existing file if it contains less than two years of data,
+        # or change this logic to overwrite it unconditionally.
         print("Sector prices exist, skipping.")
     else:
         print("Fetching sector index prices for the last 730 days...")
@@ -77,10 +77,10 @@ def fetch_sector():
                 if df is not None and not df.empty:
                     price_frames.append(df)
                     print(f"{code} prices fetched.")
-                time.sleep(0.12) # 稍微加快一点点速度，但保持安全
+                time.sleep(0.12) # Slightly faster while remaining safe
             except Exception as e:
                 print(f"{code} price failed: {e}")
-                # 权限/频率错误处理保持不变...
+                # Keep permission and rate-limit error handling unchanged.
 
         if not price_frames:
             raise RuntimeError("No sector index data fetched.")

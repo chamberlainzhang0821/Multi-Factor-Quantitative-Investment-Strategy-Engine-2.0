@@ -1,7 +1,7 @@
 def breakout_factor(df):
     print("Calculating breakout score...")
 
-    # 【安全锁】确保行位置绝对 chronological
+    # Safety check: ensure rows are strictly chronological.
     df = df.sort_values(["ts_code", "date"]).reset_index(drop=True)
 
     high20 = df.groupby("ts_code")["close"].transform(
@@ -13,7 +13,7 @@ def breakout_factor(df):
 
     df["breakout_score"] = 0
 
-    # 向量化加分
+    # Apply vectorized score additions.
     df.loc[df["close"] > high20, "breakout_score"] += 1
     df.loc[df["close"] > high55, "breakout_score"] += 2
 

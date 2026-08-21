@@ -7,7 +7,7 @@ def run_alpha_combiner():
     print("🧪 Starting Alpha Combination (Z-Scored)")
     print("=" * 40)
     
-    # 1. 加载全量因子库
+    # 1. Load the full factor database
     input_file = FACTOR_DATA_DIR / "all_factors.parquet"
     if not input_file.exists():
         raise FileNotFoundError(f"All factors database not found at {input_file}. Run factor pipeline first.")
@@ -16,7 +16,7 @@ def run_alpha_combiner():
     df = pd.read_parquet(input_file)
 
     # ---------------------------------------------------------
-    # 2. 核心配方权重表 (FACTOR WEIGHTS)
+    # 2. Core factor weights
     # ---------------------------------------------------------
     FACTOR_WEIGHTS = {
         "momentum_score": 1.0,
@@ -33,7 +33,7 @@ def run_alpha_combiner():
     print("Applying cross-sectional Z-score normalization...")
     df['alpha_score'] = 0.0
     
-    # 3. 截面 Z-score 处理并合成 alpha_score
+    # 3. Apply cross-sectional Z-scores and combine them into alpha_score
     active_factors = []
     for factor, weight in FACTOR_WEIGHTS.items():
         if weight != 0:
@@ -50,35 +50,35 @@ def run_alpha_combiner():
                 print(f"  ⚠️ Warning: {factor} is missing from the database!")
 
     # ---------------------------------------------------------
-    # 4. 保存全量分数 (用于回测)
+    # 4. Save full scores for backtesting
     # ---------------------------------------------------------
     output_file = FACTOR_DATA_DIR / "factor_scores.parquet"
     df.to_parquet(output_file, index=False)
     
     # ---------------------------------------------------------
-    # 5. 🚀 新增功能：提取最新的“今日买入清单” CSV
+    # 5. Export the latest daily buy list to CSV
     # ---------------------------------------------------------
     print("-" * 40)
     print("📅 Generating Today's Buy List...")
     
-    # 获取数据中的最后交易日
+    # Get the final trading day in the data
     latest_date = df['trade_date'].max()
     
-    # 提取最后一日的所有股票，并按 alpha_score 降序排列
+    # Extract all stocks on the final day and sort by alpha_score descending
     recommendations = df[df['trade_date'] == latest_date].copy()
     recommendations = recommendations.sort_values(by='alpha_score', ascending=False)
     
-    # 筛选核心列：只保留代码、总分以及各个子项的 Z-score，方便观察为什么选它
+    # Keep the code, total score, and component Z-scores for review
     cols_to_export = ['ts_code', 'alpha_score'] + active_factors
-    # 如果你的原始 df 里有名称（name）或行业（industry），也可以加进来
+    # Include the name when it is available in the source data
     if 'name' in recommendations.columns:
         cols_to_export.insert(1, 'name')
 
-    # 定义保存路径
+    # Define the output path
     csv_filename = f"buy_list_{latest_date.strftime('%Y%m%d')}.csv"
     csv_output_path = FACTOR_DATA_DIR / csv_filename
     
-    # 导出前 20 名（或者全部，你可以根据需要调整）
+    # Export the top 20, or adjust this limit as needed
     recommendations[cols_to_export].head(20).to_csv(csv_output_path, index=False, encoding='utf_8_sig')
 
     print("-" * 40)

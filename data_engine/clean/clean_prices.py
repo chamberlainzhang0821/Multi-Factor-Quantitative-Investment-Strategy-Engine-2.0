@@ -7,16 +7,16 @@ def clean_prices(df):
         raise ValueError("Input dataframe is None")
     df = df.copy()
 
-    # 日期
+    # Dates
     df['trade_date'] = pd.to_datetime(df['trade_date'])
     df = df.sort_values(['ts_code','trade_date'])
 
-    # 去重
+    # Deduplicate
     df = df.drop_duplicates(
         subset=['ts_code','trade_date']
     )
 
-    # 类型
+    # Data types
     numeric_cols = [
         'open','high','low','close',
         'vol','amount'

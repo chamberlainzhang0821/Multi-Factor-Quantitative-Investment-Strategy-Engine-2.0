@@ -5,32 +5,32 @@ pro = ts.pro_api()
 
 def filter_universe(df):
     """
-    全量面板股票池过滤：剔除北交所、科创、创业、ST、仙股及缺失行业映射的标的
+    Filter the full panel universe by removing BJ, STAR, ChiNext, ST, penny stocks, and stocks without sector mappings.
     """
     print(f"Original universe size: {len(df)}")
 
-    # 1. 剔除北交所 (.BJ)
+    # 1. Exclude Beijing Stock Exchange listings (.BJ).
     df = df[~df["ts_code"].str.endswith(".BJ")]
 
-    # 2. 剔除创业板 (300, 301) 和 科创板 (688, 689)
-    # 你的中长线策略更适合主板的 10% 涨跌幅，过滤掉 20% 的高波动噪音
+    # 2. Exclude ChiNext (300, 301) and STAR Market (688, 689) listings.
+    # The medium- to long-term strategy targets the main board's lower-volatility price limits.
     df = df[~df["ts_code"].str.startswith(("300", "301", "688", "689"))]
 
-    # 3. 剔除“仙股”和濒临退市的垃圾股（价格补丁）
-    # A股有“面值退市”规则（连续20天低于1元退市），低于 1 元的标的不仅毫无趋势可言，还极易出现数据错乱。
-    # 这里用 1.0 或 0.5 都可以，为了安全起见，剔除 1 块钱以下的。
+    # 3. Exclude penny stocks and securities close to delisting.
+    # A-share face-value delisting applies after 20 days below CNY 1; such stocks are unreliable for trend analysis.
+    # Use 1.0 or 0.5 as the threshold; this implementation excludes stocks below CNY 1.
     if "close" in df.columns:
         df = df[df["close"] >= 1.0]
 
-    # 4. 剔除申万行业 mapping 缺失的孤儿股（比如还没纳入指数的新股）
-    # 直接丢弃那些连行业都没分进去的票
+    # 4. Exclude stocks without Shenwan sector mappings, such as unindexed new listings.
+    # Drop securities that have not been assigned to a sector.
     if "sw_l1" in df.columns:
         df = df.dropna(subset=["sw_l1"])
 
-    # 5. ST 股票过滤 (你的原有逻辑，但我加了安全保护)
-    # ⚠️ 提示：你这种取 df['trade_date'].max() 的写法，只能取到【回测最后一天】的 ST 名单。
-    # 对于 5 年回测，这会漏掉那些“曾经在 2022 年是 ST，但后来摘帽了”的股票。
-    # 暂且保留你的逻辑，但你可以考虑后续把 ST 状态像 adj_factor 一样做成面板数据。
+    # 5. Filter ST stocks with defensive error handling.
+    # This uses only the ST list for the final backtest date.
+    # A long backtest can miss stocks that were previously ST but later had the designation removed.
+    # Consider storing historical ST status as panel data, similar to adj_factor.
     try:
         max_date = pd.to_datetime(df["trade_date"]).max()
         st = pro.stock_st(trade_date=max_date.strftime("%Y%m%d"))

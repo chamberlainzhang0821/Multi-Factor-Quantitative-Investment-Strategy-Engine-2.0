@@ -6,7 +6,7 @@ def sector_factor(df):
         ["sw_l1","sw_l2","trade_date"]
     )
 
-    # ---------- 一级行业（去重后计算避免重复滚动） ----------
+    # Level-1 sectors: deduplicate before rolling calculations.
 
     l1=(
         df[["trade_date","sw_l1","sw_l1_close"]]
@@ -58,7 +58,7 @@ def sector_factor(df):
     )
 
 
-    # ---------- 二级行业（去重后计算避免重复滚动） ----------
+    # Level-2 sectors: deduplicate before rolling calculations.
 
     l2=(
         df[["trade_date","sw_l2","sw_l2_close"]]
@@ -113,7 +113,7 @@ def sector_factor(df):
     df["sector_score"]=0.0
 
 
-    # 一级加分
+    # Level-1 sector score additions
 
     df.loc[
        df.l1_ma5>df.l1_ma10,
@@ -131,7 +131,7 @@ def sector_factor(df):
     ] +=0.5
 
 
-    # 二级加分
+    # Level-2 sector score additions
 
     df.loc[
        df.l2_ma5>df.l2_ma10,

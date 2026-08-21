@@ -16,7 +16,7 @@ from factor_engine.ignition import compute_ignition_score
 
 def run_factor_pipeline():
     """
-    量化因子生成总管道 (带内鬼实时动态审计与自愈系统)
+    Full factor-generation pipeline with real-time integrity auditing and recovery.
     """
     panel_file = CLEAN_DATA_DIR / "aligned_panel.parquet"
 
@@ -45,18 +45,18 @@ def run_factor_pipeline():
     total_start = time.perf_counter()
 
     for name, func in factor_steps:
-        # 🛡️ 记录进入该因子前的行数和状态
+        # Record the row count and state before applying this factor.
         initial_rows = len(df)
         
         t0 = time.perf_counter()
         print(f"Running {name}...")
         
-        # 链式流式加工 df
+        # Apply the factor in the processing chain.
         df = func(df)
         
         elapsed = time.perf_counter() - t0
         
-        # 🚨 【审计红外线】检查该因子函数出来后是否发生了细胞分裂
+        # Audit whether this factor caused row expansion or duplicate timestamps.
         current_rows = len(df)
         dup_mask = df.duplicated(["ts_code", "trade_date"])
         
@@ -68,7 +68,7 @@ def run_factor_pipeline():
             print(f"   - 发现重复行 : {dup_mask.sum()} 行")
             print(f"👉 正在为您执行管道内自愈去重，强行维持大面板纯净...")
             
-            # 强行自愈去重，保留加工后的第一条记录，防范污染传递给后续因子
+            # Recover by deduplicating and retaining the first processed record.
             df = df.drop_duplicates(subset=["ts_code", "trade_date"], keep="first")
             print(f"✅ 因子【{name}】带来的膨胀已被定点清除！")
             print(f"====================================================")
@@ -79,7 +79,7 @@ def run_factor_pipeline():
     print(f"Total factor calculation time: {time.perf_counter()-total_start:.2f} sec")
 
     # ---------------------------------------------------------
-    # 终极总关卡防御：确保输出的 parquet 绝对不能有重复
+    # Final safeguard: ensure the output Parquet contains no duplicates.
     # ---------------------------------------------------------
     final_dup = df.duplicated(["ts_code", "trade_date"]).any()
     if final_dup:

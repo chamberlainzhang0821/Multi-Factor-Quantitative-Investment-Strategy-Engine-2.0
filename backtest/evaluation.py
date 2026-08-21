@@ -12,12 +12,12 @@ class EvaluationEngine:
         self.market_returns = None
         
         if not self.equity.empty:
-            # 🔧 关键修复：必须把 date 设为 index，否则后面算 Alpha 无法和指数对齐！
+            # Core fix: set date as the index so Alpha can align with the benchmark.
             self.equity['date'] = pd.to_datetime(self.equity['date'])
             self.equity = self.equity.set_index('date')
             self.equity['return'] = self.equity['capital'].pct_change().fillna(0)
 
-        # 🚀 读取和处理基准
+        # Load and process the benchmark.
         if benchmark_file is not None:
             bench_path = Path(benchmark_file)
             if bench_path.exists():
@@ -46,9 +46,9 @@ class EvaluationEngine:
         avg_hold_days = 0
         annual_turnover = 0
         
-        # 🚀 修复：只要有交易记录（包括回测结束强制结算的）就统计
+        # Include all trade records, including end-of-backtest forced settlement.
         if not self.trades.empty:
-            # 确保 pnl 列存在
+            # Ensure the pnl column exists.
             if 'pnl' in self.trades.columns:
                 profits = self.trades[self.trades['pnl'] > 0]['pnl']
                 losses = self.trades[self.trades['pnl'] < 0]['pnl']
@@ -71,7 +71,7 @@ class EvaluationEngine:
                 avg_portfolio_value = self.equity['capital'].mean()
                 annual_turnover = total_traded_capital / avg_portfolio_value / years
 
-        # Alpha 计算逻辑保持不变...
+        # Keep the Alpha calculation logic unchanged.
         alpha = 0.0
         if self.market_returns is not None and daily_ret.std() != 0:
             aligned = pd.concat([daily_ret.rename('strat'), self.market_returns.rename('mkt')], axis=1).dropna()
@@ -92,22 +92,22 @@ class EvaluationEngine:
     
     def calculate_yearly_returns(self):
         """
-        🚀 新增：将 equity 按年分组，计算每一年的独立回报率和最大回撤
-        返回一个 Pandas DataFrame 方便打印
+        Group equity by year and calculate each year's return and maximum drawdown.
+        Return a Pandas DataFrame for convenient printing.
         """
         if self.equity.empty:
             return pd.DataFrame()
             
         yearly_records = []
         
-        # 按照时间的年份进行分组
+        # Group by calendar year.
         for year, group in self.equity.groupby(self.equity.index.year):
             if not group.empty:
                 start_capital = group['capital'].iloc[0]
                 end_capital = group['capital'].iloc[-1]
                 yearly_ret = (end_capital / start_capital) - 1
                 
-                # 计算当年的最大回撤
+                # Calculate the year's maximum drawdown.
                 cum_max = group['capital'].cummax()
                 drawdown = (group['capital'] / cum_max) - 1
                 max_dd = drawdown.min()
@@ -119,4 +119,4 @@ class EvaluationEngine:
                 })
                 
         yearly_df = pd.DataFrame(yearly_records).set_index("Year")
-        return yearly_df            
+        return yearly_df

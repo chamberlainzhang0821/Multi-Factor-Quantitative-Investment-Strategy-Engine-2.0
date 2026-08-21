@@ -16,9 +16,9 @@ class DataEngine:
         self.factors['date'] = pd.to_datetime(self.factors['trade_date']).dt.normalize()
         panel['trade_date'] = pd.to_datetime(panel['trade_date']).dt.normalize()
         
-        # ---------------------------------------------------------
+
         # Critical Optimization: Price Matrix Pivot
-        # ---------------------------------------------------------
+
         # We pivot the long-format panel into a wide matrix 
         # (Index = Dates, Columns = Codes, Values = Close Prices).
         # This makes daily price lookups O(1) instead of filtering rows,

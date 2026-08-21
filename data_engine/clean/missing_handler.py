@@ -2,12 +2,11 @@ import pandas as pd
 
 
 def handle_missing(df):
-    """修复后的全量面板数据缺失值处理函数。
+    """Handle missing values in the corrected full-panel dataset.
 
-    ⚠️ 重要警告：
-    此函数内部包含时间序列填充逻辑（ffill / bfill），
-    必须在合并完所有个股、行业、外部数据形成的【全局大面板 (Panel)】上运行！
-    严禁在单日横截面 (Cross-section) 循环中调用，否则填充步长永远为 1，函数将完全失效。
+    Important: this function uses time-series filling (ffill / bfill).
+    Run it only on the global panel after all stock, sector, and external data are merged.
+    Do not call it in a single-day cross-sectional loop, where a fill length of one would make it ineffective.
     """
     if df is None or df.empty:
         return df
@@ -15,29 +14,29 @@ def handle_missing(df):
     df = df.copy()
 
     # ----------------------------------------------------
-    # 🚨 核心修复 1：强行全局严格排序
-    # 确保同一个 ts_code 的数据按时间先后顺序紧密排列，这是所有 ffill/bfill 生效的前提
+    # Core fix 1: enforce strict global sorting.
+    # Each ts_code must be tightly ordered by time for ffill/bfill to work correctly.
     # ----------------------------------------------------
     df = df.sort_values(["ts_code", "trade_date"]).reset_index(drop=True)
 
     # ----------------------------------------------------
-    # 1. 个股收盘价时序填充
+    # 1. Time-series filling for individual-stock closing prices.
     # ----------------------------------------------------
-    # 最多连续填充 3 天，超过 3 天的长期停牌股不予填充，防范死尸股噪音
+    # Fill at most three consecutive days to avoid noise from long-suspended stocks.
     if "close" in df.columns:
         df["close"] = df.groupby("ts_code")["close"].ffill(limit=3)
 
     # ----------------------------------------------------
-    # 2. 剔除成交量缺失的无效交易日
+    # 2. Drop invalid trading days with missing volume.
     # ----------------------------------------------------
-    # A股如果单日无成交量（比如整天停牌且没开盘），该行数据在多因子计算中无意义，直接剔除
+    # An A-share row without volume is not useful for multi-factor calculations and is removed.
     if "vol" in df.columns:
         df = df.dropna(subset=["vol"])
 
     # ----------------------------------------------------
-    # 3. 资金流缺失值自动归零
+    # 3. Set missing money-flow values to zero.
     # ----------------------------------------------------
-    # 主力资金、大单、特大单如果没有成交数据，说明当天该档位交易量为 0，填充为 0 合乎逻辑
+    # Missing main-force, large-order, and extra-large-order data indicates zero volume at that tier.
     mf_cols = [
         c
         for c in df.columns
@@ -47,9 +46,9 @@ def handle_missing(df):
         df[mf_cols] = df[mf_cols].fillna(0)
 
     # ----------------------------------------------------
-    # 4. 申万行业标签时序填充
+    # 4. Time-series filling for Shenwan sector labels.
     # ----------------------------------------------------
-    # 解决个股中途漏配行业、或者申万官方动态调整行业导致的成分股历史断层
+    # Handle missing assignments and historical gaps caused by dynamic Shenwan sector changes.
     if "sw_l1" in df.columns:
         df["sw_l1"] = df.groupby("ts_code")["sw_l1"].ffill().bfill()
 
@@ -57,11 +56,10 @@ def handle_missing(df):
         df["sw_l2"] = df.groupby("ts_code")["sw_l2"].ffill().bfill()
 
     # ----------------------------------------------------
-    # 5. 行业指数价格时序填充
-    # 🚨 核心修复 2：坚决不能用 groupby('sw_l1')！
-    # 因为在扁平的全局面板里，如果用行业代码分组，`.ffill()` 会让【股票A在最后一天的数据】
-    # 直接跨界填充到【股票B的第一天数据】里，造成极其恐怖的跨股票数据串行和未来函数。
-    # 正确做法：依然按 'ts_code' 分组，顺着每只票自己的历史轨迹去填充它当天的行业指数价格。
+    # 5. Time-series filling for sector-index prices.
+    # Core fix 2: never use groupby('sw_l1') here.
+    # In a flat global panel, it could forward-fill the final row of one stock into another stock's first row.
+    # Instead, group by ts_code and follow each stock's own history when filling sector-index prices.
     # ----------------------------------------------------
     if "sw_l1_close" in df.columns:
         df["sw_l1_close"] = (

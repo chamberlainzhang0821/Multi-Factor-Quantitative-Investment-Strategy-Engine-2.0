@@ -1,6 +1,4 @@
-# ==========================================
 # Trend Following Strategy Config
-# ==========================================
 
 # for all the score: we remaint the option to use ML to optimize the weights,
 #  but for now we set them based on intuition and backtesting results

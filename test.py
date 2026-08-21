@@ -7,7 +7,7 @@ from datetime import datetime
 # -------------------
 load_dotenv()
 # -------------------
-# 填你的 Tushare Token
+# Enter your Tushare token.
 # -------------------
 TOKEN = os.getenv("TUSHARE_TOKEN")
 
@@ -25,9 +25,7 @@ def record(test_name, success, fields=None, note=None):
     })
 
 
-# ==========================
-# 1. 个股日线 + MA + Volume
-# ==========================
+# 1. Individual-stock daily data, moving averages, and volume
 try:
     df = pro.daily(
         ts_code='000001.SZ',
@@ -35,7 +33,7 @@ try:
         end_date='20240331'
     )
 
-    # 测试能否计算均线
+    # Test whether moving averages can be calculated.
     for n in [10,20,50,120,200,240]:
         df[f"MA{n}"] = df["close"].rolling(n).mean()
 
@@ -53,9 +51,7 @@ except Exception as e:
     )
 
 
-# ==========================
-# 2. 主力趋势（用资金流接口测试）
-# ==========================
+# 2. Main-force trend (test using the money-flow API)
 try:
     df = pro.moneyflow(
         ts_code='000001.SZ',
@@ -77,9 +73,7 @@ except Exception as e:
     )
 
 
-# ==========================
-# 3. 申万一级行业指数
-# ==========================
+# 3. Shenwan Level-1 sector index
 try:
     df = pro.index_classify(
         level='L1',
@@ -100,9 +94,7 @@ except Exception as e:
     )
 
 
-# ==========================
-# 4. 申万二级行业指数
-# ==========================
+# 4. Shenwan Level-2 sector index
 try:
     df = pro.index_classify(
         level='L2',
@@ -123,9 +115,7 @@ except Exception as e:
     )
 
 
-# ==========================
-# 5. 上证指数
-# ==========================
+# 5. Shanghai Stock Exchange Composite Index
 try:
     df = pro.index_daily(
         ts_code='000001.SH',
@@ -147,9 +137,7 @@ except Exception as e:
     )
 
 
-# ==========================
-# 6. 深证指数
-# ==========================
+# 6. Shenzhen Stock Exchange Component Index
 try:
     df = pro.index_daily(
         ts_code='399001.SZ',
@@ -171,9 +159,7 @@ except Exception as e:
     )
 
 
-# ==========================
-# 导出 CSV
-# ==========================
+# Export CSV
 out = pd.DataFrame(results)
 
 filename = "tushare_permission_check.csv"
